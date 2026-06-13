@@ -2,6 +2,9 @@ import discord
 from discord import app_commands
 import os
 import json
+import io
+import aiohttp
+from PIL import Image, ImageDraw
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -102,6 +105,79 @@ def set_apply_channel(guild_id: int, channel_id: int):
     config = load_config()
     config.setdefault(str(guild_id), {})["apply_channel"] = channel_id
     save_config(config)
+
+
+def get_welcome_channel(guild_id: int) -> int | None:
+    config = load_config()
+    return config.get(str(guild_id), {}).get("welcome_channel")
+
+
+def set_welcome_channel(guild_id: int, channel_id: int):
+    config = load_config()
+    config.setdefault(str(guild_id), {})["welcome_channel"] = channel_id
+    save_config(config)
+
+
+# ─── Welcome image generation ──────────────────────────────────────────────────
+
+WELCOME_TEMPLATE = "discord-bot/welcome_template.png"
+# Circle where the avatar goes (top-left of the 500x281 image)
+AVATAR_CENTER_X = 80
+AVATAR_CENTER_Y = 95
+AVATAR_RADIUS   = 62   # adjust if needed
+
+
+async def build_welcome_image(avatar_url: str) -> io.BytesIO:
+    # Download avatar
+    async with aiohttp.ClientSession() as session:
+        async with session.get(avatar_url) as resp:
+            avatar_bytes = await resp.read()
+
+    # Open avatar and make it circular
+    avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
+    size = AVATAR_RADIUS * 2
+    avatar = avatar.resize((size, size), Image.LANCZOS)
+
+    # Create circular mask
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
+
+    # Apply mask
+    avatar_circle = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    avatar_circle.paste(avatar, (0, 0), mask)
+
+    # Paste onto template
+    template = Image.open(WELCOME_TEMPLATE).convert("RGBA")
+    x = AVATAR_CENTER_X - AVATAR_RADIUS
+    y = AVATAR_CENTER_Y - AVATAR_RADIUS
+    template.paste(avatar_circle, (x, y), avatar_circle)
+
+    # Save to buffer
+    buf = io.BytesIO()
+    template.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+
+@bot.event
+async def on_member_join(member: discord.Member):
+    channel_id = get_welcome_channel(member.guild.id)
+    if not channel_id:
+        return
+    channel = member.guild.get_channel(channel_id)
+    if not channel:
+        return
+
+    avatar_url = member.display_avatar.replace(size=256, format="png").url
+    try:
+        image_buf = await build_welcome_image(avatar_url)
+        await channel.send(
+            content=f"مرحباً {member.mention}! 🎉",
+            file=discord.File(image_buf, filename="welcome.png")
+        )
+    except Exception as e:
+        print(f"❌ Welcome image error: {e}")
+        await channel.send(f"مرحباً {member.mention}! 🎉")
 
 
 # ─── Send application to staff channel ─────────────────────────────────────────
@@ -437,6 +513,21 @@ async def setapplychannel_cmd(interaction: discord.Interaction, channel: discord
     embed = discord.Embed(
         title="✅ Apply Channel Set",
         description=f"Staff applications will now be sent to {channel.mention}.",
+        color=0x2ecc71,
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@tree.command(name="setwelcomechannel", description="Set the channel where welcome messages are sent")
+@app_commands.describe(channel="The channel to send welcome images")
+async def setwelcomechannel_cmd(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not has_allowed_role(interaction):
+        await interaction.response.send_message("❌ ما عندك صلاحية تستخدم هذا الأمر.", ephemeral=True)
+        return
+    set_welcome_channel(interaction.guild_id, channel.id)
+    embed = discord.Embed(
+        title="✅ Welcome Channel Set",
+        description=f"Welcome images will now be sent to {channel.mention}.",
         color=0x2ecc71,
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
