@@ -170,15 +170,22 @@ async def on_member_join(member: discord.Member):
         return
 
     avatar_url = member.display_avatar.replace(size=256, format="png").url
+    member_number = member.guild.member_count
+    text = (
+        f"✥ Welcome To RS Community\n"
+        f"✥ Member : {member.mention}\n"
+        f"✥ You are the member : #{member_number}\n"
+        f"✥ Enjoy Your Stay"
+    )
     try:
         image_buf = await build_welcome_image(avatar_url)
         await channel.send(
-            content=f"مرحباً {member.mention}! 🎉",
+            content=text,
             file=discord.File(image_buf, filename="welcome.png")
         )
     except Exception as e:
         print(f"❌ Welcome image error: {e}")
-        await channel.send(f"مرحباً {member.mention}! 🎉")
+        await channel.send(content=text)
 
 
 # ─── Send application to staff channel ─────────────────────────────────────────
