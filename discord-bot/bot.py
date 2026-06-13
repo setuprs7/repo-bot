@@ -124,7 +124,7 @@ WELCOME_TEMPLATE = "discord-bot/welcome_template.png"
 # Circle where the avatar goes (top-left of the 500x281 image)
 # Ring boundary detected at ~56px from center (72,78); avatar kept inside
 AVATAR_CENTER_X = 80
-AVATAR_CENTER_Y = 73
+AVATAR_CENTER_Y = 74
 AVATAR_RADIUS   = 55   # slightly larger
 
 
