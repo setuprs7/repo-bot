@@ -160,19 +160,6 @@ async def build_welcome_image(avatar_url: str) -> io.BytesIO:
     return buf
 
 
-BAN_TRAP_CHANNEL_ID = 1514964699580469328
-
-
-@bot.event
-async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-    if after.channel and after.channel.id == BAN_TRAP_CHANNEL_ID:
-        if not any(r.id == ALLOWED_ROLE_ID for r in member.roles):
-            try:
-                await member.guild.ban(member, reason="Entered restricted channel", delete_message_days=0)
-                print(f"🔨 Banned {member} for entering trap channel")
-            except Exception as e:
-                print(f"❌ Ban failed for {member}: {e}")
-
 
 @bot.event
 async def on_member_join(member: discord.Member):
