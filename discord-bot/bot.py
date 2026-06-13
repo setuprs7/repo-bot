@@ -123,9 +123,9 @@ def set_welcome_channel(guild_id: int, channel_id: int):
 WELCOME_TEMPLATE = "discord-bot/welcome_template.png"
 # Circle where the avatar goes (top-left of the 500x281 image)
 # Ring boundary detected at ~56px from center (72,78); avatar kept inside
-AVATAR_CENTER_X = 72
-AVATAR_CENTER_Y = 78
-AVATAR_RADIUS   = 44   # fits inside blue ring (~56px), leaving ring visible
+AVATAR_CENTER_X = 78
+AVATAR_CENTER_Y = 90
+AVATAR_RADIUS   = 50   # fits inside blue ring, ring still visible around edges
 
 
 async def build_welcome_image(avatar_url: str) -> io.BytesIO:
